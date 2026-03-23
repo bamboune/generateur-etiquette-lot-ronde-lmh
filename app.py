@@ -50,7 +50,7 @@ st.subheader(f"{template['description']}")
 
 # Input
 lot_number = st.text_input(
-    "Numéro de lot",
+    "Numéro de lot / Autre",
     placeholder="ex: 2026-10",
     max_chars=20
 )
