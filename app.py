@@ -2,7 +2,7 @@ import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 import io
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 st.set_page_config(
     page_title="Etiquettes LMH",
@@ -44,7 +44,6 @@ templates = {
         "page_height": 279.4,
         "total": 154,
         "description": "11 colonnes × 14 rangées = 154 étiquettes",
-        "preview_size": (150, 150),  # circular
         "is_circular": True
     },
     "Étiquette rectangle Erratum (1\" × 0.375\")": {
@@ -58,7 +57,6 @@ templates = {
         "page_height": 279.4,
         "total": 154,
         "description": "7 colonnes × 22 rangées = 154 étiquettes",
-        "preview_size": (400, 150),  # rectangular
         "is_circular": False
     },
 }
@@ -85,56 +83,51 @@ with col1:
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=1)
 
-# APERÇU EN TEMPS RÉEL
+# Fonction pour wrapper le texte (pour rectangles)
+def wrap_text(text, max_chars_per_line=20):
+    """Wrap le texte intelligemment sur plusieurs lignes"""
+    words = text.split()
+    lines = []
+    current_line = ""
+    
+    for word in words:
+        if len(current_line) + len(word) + 1 <= max_chars_per_line:
+            if current_line:
+                current_line += " " + word
+            else:
+                current_line = word
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    return lines[:4]  # Max 4 lignes
+
+# Afficher un aperçu textuel
 if lot_number.strip():
     st.divider()
     st.subheader("📋 Aperçu")
     
-    # Créer une preview
-    preview_width, preview_height = template["preview_size"]
-    preview = Image.new("RGB", (preview_width, preview_height), "white")
-    draw = ImageDraw.Draw(preview)
-    
-    # Dessiner le cadre
     if template["is_circular"]:
-        # Cercle
-        draw.ellipse([5, 5, preview_width-5, preview_height-5], outline="gray", width=2)
+        st.info(f"Texte: {lot_number}")
+        if len(lot_number) > 15:
+            st.warning("⚠️ Le texte est long pour un cercle. Considère réduire la font.")
     else:
-        # Rectangle
-        draw.rectangle([5, 5, preview_width-5, preview_height-5], outline="gray", width=2)
-    
-    # Essayer d'afficher le texte
-    try:
-        font_name = "Helvetica-Bold" if font_weight == "bold" else "Helvetica"
-        # Essayer de charger une font système
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
-        except:
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-            except:
-                font = ImageFont.load_default()
+        # Rectangle - montrer comment ça wrap
+        lines = wrap_text(lot_number)
+        preview_text = "\n".join(lines)
         
-        # Calculer la position du texte (centré)
-        bbox = draw.textbbox((0, 0), lot_number, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
+        st.code(preview_text, language="text")
         
-        x = (preview_width - text_width) // 2
-        y = (preview_height - text_height) // 2
-        
-        # Vérifier si le texte fit
-        if text_width > preview_width - 20 or text_height > preview_height - 20:
-            draw.text((x, y), lot_number, fill="red", font=font)
-            st.warning(f"⚠️ Le texte est trop long pour cette étiquette avec cette taille! Réduis la font ou le texte.")
+        if len(lines) <= 2:
+            st.success(f"✅ Parfait! ({len(lines)} ligne{'s' if len(lines) > 1 else ''})")
+        elif len(lines) <= 4:
+            st.info(f"✅ Bon! ({len(lines)} lignes)")
         else:
-            draw.text((x, y), lot_number, fill="black", font=font)
-            st.success("✅ Le texte fit parfaitement!")
-    except Exception as e:
-        st.error(f"Erreur: {e}")
-    
-    # Afficher la preview
-    st.image(preview, use_container_width=False, width=preview_width)
+            st.warning(f"⚠️ Trop de lignes ({len(lines)})! Réduis le texte.")
 
 st.divider()
 
@@ -166,7 +159,23 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
             for col in range(cols):
                 x = groupX + (col * spacingH)
                 y = page_height - (groupY + (row * spacingV))
-                c.drawCentredString(x*mm, y*mm, lot_number)
+                
+                # Si c'est un rectangle, wrapper le texte
+                if not template["is_circular"]:
+                    lines = wrap_text(lot_number)
+                    line_spacing = font_size * 1.2  # espacement entre lignes en points
+                    
+                    # Calculer la position Y de départ pour centrer verticalement
+                    total_height = len(lines) * line_spacing
+                    start_y = y + (total_height / 2)
+                    
+                    # Dessiner chaque ligne
+                    for i, line in enumerate(lines):
+                        line_y = start_y - (i * line_spacing)
+                        c.drawCentredString(x*mm, line_y, line)
+                else:
+                    # Cercles: texte sur une seule ligne
+                    c.drawCentredString(x*mm, y*mm, lot_number)
         
         c.save()
         pdf_buffer.seek(0)
@@ -192,13 +201,13 @@ with st.expander("📖 Instructions"):
     1. Sélectionne le template
     2. Rentre le numéro de lot (ex: 2026-10)
     3. Ajuste la taille du texte si besoin
-    4. Regarde l'aperçu pour vérifier que ça fit
+    4. Regarde l'aperçu pour vérifier le wrapping
     5. Clique "Générer PDF" quand c'est bon
     6. Télécharge et imprime sur tes étiquettes
     
     **Spécifications disponibles:**
-    - Étiquettes de lot rondes: 11 col × 14 rangées (½" rond)
-    - Étiquette rectangle Erratum: 7 col × 22 rangées
+    - Étiquettes de lot rondes: texte sur 1 ligne
+    - Étiquette rectangle Erratum: texte peut wrap sur 2-4 lignes
     """)
 
 # Footer
