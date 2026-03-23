@@ -10,16 +10,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom colors LMH
-colors = {
-    "melon": "#f8b1ae",
-    "peche": "#fcd1b6",
-    "turquoise": "#78c9b1",
-    "mauve": "#cbbcdc",
-    "vert": "#deedcc",
-    "jaune": "#f4d898"
-}
-
 # Logo en haut
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
@@ -42,7 +32,6 @@ templates = {
         "rows": 14,
         "page_width": 215.9,
         "page_height": 279.4,
-        "total": 154,
         "description": "11 colonnes × 14 rangées = 154 étiquettes",
         "is_circular": True
     },
@@ -55,47 +44,36 @@ templates = {
         "rows": 22,
         "page_width": 215.9,
         "page_height": 279.4,
-        "total": 154,
         "description": "7 colonnes × 22 rangées = 154 étiquettes",
         "is_circular": False
     },
 }
 
-# Template selection
-template_choice = st.selectbox(
-    "Quel template?",
-    list(templates.keys())
-)
-
+template_choice = st.selectbox("Quel template?", list(templates.keys()))
 template = templates[template_choice]
 st.subheader(f"{template['description']}")
 
-# Input
-lot_number = st.text_input(
-    "Numéro de lot / Autre",
-    placeholder="ex: 2026-10"
-)
+lot_number = st.text_input("Numéro de lot / Autre", placeholder="ex: 2026-10")
 
-# Settings
 col1, col2 = st.columns(2)
 with col1:
     font_size = st.slider("Taille du texte", 4, 14, 6)
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=1)
 
-# Fonction pour wrapper le texte (pour rectangles)
-def wrap_text(text, max_chars_per_line=20):
-    """Wrap le texte intelligemment sur plusieurs lignes"""
+# Fonction pour wrapper le texte
+def wrap_text_by_width(text, font_size, is_bold=False, max_width_mm=22.3, max_lines=4):
+    char_width_mm = (font_size / 6) * 0.55
+    chars_per_line = int(max_width_mm / char_width_mm)
+    
     words = text.split()
     lines = []
     current_line = ""
     
     for word in words:
-        if len(current_line) + len(word) + 1 <= max_chars_per_line:
-            if current_line:
-                current_line += " " + word
-            else:
-                current_line = word
+        test_line = current_line + (" " if current_line else "") + word
+        if len(test_line) <= chars_per_line:
+            current_line = test_line
         else:
             if current_line:
                 lines.append(current_line)
@@ -104,9 +82,9 @@ def wrap_text(text, max_chars_per_line=20):
     if current_line:
         lines.append(current_line)
     
-    return lines[:4]  # Max 4 lignes
+    return lines[:max_lines]
 
-# Afficher un aperçu textuel
+# Aperçu
 if lot_number.strip():
     st.divider()
     st.subheader("📋 Aperçu")
@@ -114,12 +92,10 @@ if lot_number.strip():
     if template["is_circular"]:
         st.info(f"Texte: {lot_number}")
         if len(lot_number) > 15:
-            st.warning("⚠️ Le texte est long pour un cercle. Considère réduire la font.")
+            st.warning("⚠️ Le texte est long pour un cercle.")
     else:
-        # Rectangle - montrer comment ça wrap
-        lines = wrap_text(lot_number)
+        lines = wrap_text_by_width(lot_number, font_size, font_weight == "bold")
         preview_text = "\n".join(lines)
-        
         st.code(preview_text, language="text")
         
         if len(lines) <= 2:
@@ -127,16 +103,14 @@ if lot_number.strip():
         elif len(lines) <= 4:
             st.info(f"✅ Bon! ({len(lines)} lignes)")
         else:
-            st.warning(f"⚠️ Trop de lignes ({len(lines)})! Réduis le texte.")
+            st.warning(f"⚠️ Trop de lignes ({len(lines)})!")
 
 st.divider()
 
-# Generate button
 if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
     if not lot_number.strip():
         st.error("Rentre un numéro de lot!")
     else:
-        # Extract template settings
         groupX = template["groupX"]
         groupY = template["groupY"]
         spacingH = template["spacingH"]
@@ -146,25 +120,32 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         page_width = template["page_width"]
         page_height = template["page_height"]
         
-        # Créer le PDF en mémoire
         pdf_buffer = io.BytesIO()
         c = canvas.Canvas(pdf_buffer, pagesize=(page_width*mm, page_height*mm))
         
-        # Font
         font_name = "Helvetica-Bold" if font_weight == "bold" else "Helvetica"
         c.setFont(font_name, font_size)
         
-        # Générer les étiquettes
         for row in range(rows):
             for col in range(cols):
                 x = groupX + (col * spacingH)
                 y = page_height - (groupY + (row * spacingV))
-                c.drawCentredString(x*mm, y*mm, lot_number)
+                
+                if not template["is_circular"]:
+                    lines = wrap_text_by_width(lot_number, font_size, font_weight == "bold")
+                    line_height = font_size * 0.35
+                    total_text_height = len(lines) * line_height
+                    start_y = y + (total_text_height / 2)
+                    
+                    for i, line in enumerate(lines):
+                        line_y = start_y - (i * line_height)
+                        c.drawCentredString(x*mm, line_y, line)
+                else:
+                    c.drawCentredString(x*mm, y*mm, lot_number)
         
         c.save()
         pdf_buffer.seek(0)
         
-        # Download button
         st.download_button(
             label="⬇️ Télécharger le PDF",
             data=pdf_buffer,
@@ -175,11 +156,8 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         
         st.success(f"✅ PDF généré: {lot_number}.pdf")
         st.info(f"Prêt à imprimer sur {template_choice}")
-        
-        # CONFETTI! 🎉
         st.balloons()
 
-# Instructions
 with st.expander("📖 Instructions"):
     st.markdown("""
     1. Sélectionne le template
@@ -188,12 +166,7 @@ with st.expander("📖 Instructions"):
     4. Regarde l'aperçu pour vérifier le wrapping
     5. Clique "Générer PDF" quand c'est bon
     6. Télécharge et imprime sur tes étiquettes
-    
-    **Spécifications disponibles:**
-    - Étiquettes de lot rondes: texte sur 1 ligne
-    - Étiquette rectangle Erratum: texte peut wrap sur 2-4 lignes
     """)
 
-# Footer
 st.divider()
 st.caption("Les Mauvaises Herbes 🌿 — Étiquettes de lot automatisées")
