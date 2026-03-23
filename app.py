@@ -10,7 +10,43 @@ st.set_page_config(
 )
 
 st.title("🏷️ Générateur d'étiquettes")
-st.subheader("ULINE S-15580 — 11 × 14 = 154 étiquettes")
+
+# Templates definition
+templates = {
+    "Étiquettes de lot rondes (ULINE S-15580 ½\" rond)": {
+        "groupX": 12.55,
+        "groupY": 16.07,
+        "spacingH": 19.08,
+        "spacingV": 19.0202,
+        "cols": 11,
+        "rows": 14,
+        "page_width": 215.9,
+        "page_height": 279.4,
+        "total": 154,
+        "description": "11 colonnes × 14 rangées = 154 étiquettes"
+    },
+    "Étiquette rectangle Erratum (1\" × 0.375\")": {
+        "groupX": 24.077,
+        "groupY": 13.529,
+        "spacingH": 27.958,
+        "spacingV": 12.015,
+        "cols": 7,
+        "rows": 22,
+        "page_width": 215.9,
+        "page_height": 279.4,
+        "total": 154,
+        "description": "7 colonnes × 22 rangées = 154 étiquettes"
+    },
+}
+
+# Template selection
+template_choice = st.selectbox(
+    "Quel template?",
+    list(templates.keys())
+)
+
+template = templates[template_choice]
+st.subheader(f"{template['description']}")
 
 # Input
 lot_number = st.text_input(
@@ -31,25 +67,29 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
     if not lot_number.strip():
         st.error("Rentre un numéro de lot!")
     else:
-        # Positions centrées (mesurées)
-        groupX = 12.55
-        groupY = 16.07
-        spacingH = 19.08
-        spacingV = 19.0202
+        # Extract template settings
+        groupX = template["groupX"]
+        groupY = template["groupY"]
+        spacingH = template["spacingH"]
+        spacingV = template["spacingV"]
+        cols = template["cols"]
+        rows = template["rows"]
+        page_width = template["page_width"]
+        page_height = template["page_height"]
         
         # Créer le PDF en mémoire
         pdf_buffer = io.BytesIO()
-        c = canvas.Canvas(pdf_buffer, pagesize=(215.9*mm, 279.4*mm))
+        c = canvas.Canvas(pdf_buffer, pagesize=(page_width*mm, page_height*mm))
         
         # Font
         font_name = "Helvetica-Bold" if font_weight == "bold" else "Helvetica"
         c.setFont(font_name, font_size)
         
-        # Générer les 154 étiquettes
-        for row in range(14):
-            for col in range(11):
+        # Générer les étiquettes
+        for row in range(rows):
+            for col in range(cols):
                 x = groupX + (col * spacingH)
-                y = 279.4 - (groupY + (row * spacingV))
+                y = page_height - (groupY + (row * spacingV))
                 c.drawCentredString(x*mm, y*mm, lot_number)
         
         c.save()
@@ -65,20 +105,20 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         )
         
         st.success(f"✅ PDF généré: {lot_number}.pdf")
-        st.info("Prêt à imprimer sur ULINE S-15580")
+        st.info(f"Prêt à imprimer sur {template_choice}")
 
 # Instructions
 with st.expander("📖 Instructions"):
     st.markdown("""
-    1. Rentre le numéro de lot (ex: 2026-10)
-    2. Ajuste la taille du texte si besoin
-    3. Clique "Générer PDF"
-    4. Télécharge et imprime sur les étiquettes ULINE
+    1. Sélectionne le template
+    2. Rentre le numéro de lot (ex: 2026-10)
+    3. Ajuste la taille du texte si besoin
+    4. Clique "Générer PDF"
+    5. Télécharge et imprime sur tes étiquettes
     
-    **Spécifications:**
-    - Template: ULINE S-15580
-    - Grille: 11 colonnes × 14 rangées = 154 étiquettes
-    - Format: 8.5" × 11"
+    **Spécifications disponibles:**
+    - ULINE S-15580: 11 col × 14 rangées (½" rond)
+    - Rectangle 1" × 0.375": 7 col × 22 rangées
     """)
 
 # Footer
