@@ -163,7 +163,7 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                 # Si c'est un rectangle, wrapper le texte
                 if not template["is_circular"]:
                     lines = wrap_text(lot_number)
-                    line_spacing = font_size * 1.2  # espacement entre lignes en points
+                    line_spacing = font_size * 0.4  # espacement entre lignes en mm
                     
                     # Calculer la position Y de départ pour centrer verticalement
                     total_height = len(lines) * line_spacing
