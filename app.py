@@ -2,12 +2,32 @@ import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 import io
+from PIL import Image
 
 st.set_page_config(
     page_title="Etiquettes LMH",
     page_icon="🏷️",
     layout="centered"
 )
+
+# Custom colors LMH
+colors = {
+    "melon": "#f8b1ae",
+    "peche": "#fcd1b6",
+    "turquoise": "#78c9b1",
+    "mauve": "#cbbcdc",
+    "vert": "#deedcc",
+    "jaune": "#f4d898"
+}
+
+# Logo en haut
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    try:
+        logo = Image.open("/mnt/user-data/uploads/nouveau_logo_noir.png")
+        st.image(logo, width=150)
+    except:
+        pass
 
 st.title("🏷️ Générateur d'étiquettes")
 
@@ -51,8 +71,7 @@ st.subheader(f"{template['description']}")
 # Input
 lot_number = st.text_input(
     "Numéro de lot / Autre",
-    placeholder="ex: 2026-10",
-    max_chars=20
+    placeholder="ex: 2026-10"
 )
 
 # Settings
@@ -106,6 +125,9 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         
         st.success(f"✅ PDF généré: {lot_number}.pdf")
         st.info(f"Prêt à imprimer sur {template_choice}")
+        
+        # CONFETTI! 🎉
+        st.balloons()
 
 # Instructions
 with st.expander("📖 Instructions"):
@@ -117,8 +139,8 @@ with st.expander("📖 Instructions"):
     5. Télécharge et imprime sur tes étiquettes
     
     **Spécifications disponibles:**
-    - ULINE S-15580: 11 col × 14 rangées (½" rond)
-    - Rectangle 1" × 0.375": 7 col × 22 rangées
+    - Étiquettes de lot rondes: 11 col × 14 rangées (½" rond)
+    - Étiquette rectangle Erratum: 7 col × 22 rangées
     """)
 
 # Footer
