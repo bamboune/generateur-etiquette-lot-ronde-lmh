@@ -2,7 +2,7 @@ import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 import io
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(
     page_title="Etiquettes LMH",
@@ -43,7 +43,9 @@ templates = {
         "page_width": 215.9,
         "page_height": 279.4,
         "total": 154,
-        "description": "11 colonnes × 14 rangées = 154 étiquettes"
+        "description": "11 colonnes × 14 rangées = 154 étiquettes",
+        "preview_size": (150, 150),  # circular
+        "is_circular": True
     },
     "Étiquette rectangle Erratum (1\" × 0.375\")": {
         "groupX": 24.077,
@@ -55,7 +57,9 @@ templates = {
         "page_width": 215.9,
         "page_height": 279.4,
         "total": 154,
-        "description": "7 colonnes × 22 rangées = 154 étiquettes"
+        "description": "7 colonnes × 22 rangées = 154 étiquettes",
+        "preview_size": (400, 150),  # rectangular
+        "is_circular": False
     },
 }
 
@@ -77,9 +81,62 @@ lot_number = st.text_input(
 # Settings
 col1, col2 = st.columns(2)
 with col1:
-    font_size = st.slider("Taille du texte", 4, 10, 6)
+    font_size = st.slider("Taille du texte", 4, 14, 6)
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=1)
+
+# APERÇU EN TEMPS RÉEL
+if lot_number.strip():
+    st.divider()
+    st.subheader("📋 Aperçu")
+    
+    # Créer une preview
+    preview_width, preview_height = template["preview_size"]
+    preview = Image.new("RGB", (preview_width, preview_height), "white")
+    draw = ImageDraw.Draw(preview)
+    
+    # Dessiner le cadre
+    if template["is_circular"]:
+        # Cercle
+        draw.ellipse([5, 5, preview_width-5, preview_height-5], outline="gray", width=2)
+    else:
+        # Rectangle
+        draw.rectangle([5, 5, preview_width-5, preview_height-5], outline="gray", width=2)
+    
+    # Essayer d'afficher le texte
+    try:
+        font_name = "Helvetica-Bold" if font_weight == "bold" else "Helvetica"
+        # Essayer de charger une font système
+        try:
+            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+        except:
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+            except:
+                font = ImageFont.load_default()
+        
+        # Calculer la position du texte (centré)
+        bbox = draw.textbbox((0, 0), lot_number, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        x = (preview_width - text_width) // 2
+        y = (preview_height - text_height) // 2
+        
+        # Vérifier si le texte fit
+        if text_width > preview_width - 20 or text_height > preview_height - 20:
+            draw.text((x, y), lot_number, fill="red", font=font)
+            st.warning(f"⚠️ Le texte est trop long pour cette étiquette avec cette taille! Réduis la font ou le texte.")
+        else:
+            draw.text((x, y), lot_number, fill="black", font=font)
+            st.success("✅ Le texte fit parfaitement!")
+    except Exception as e:
+        st.error(f"Erreur: {e}")
+    
+    # Afficher la preview
+    st.image(preview, use_container_width=False, width=preview_width)
+
+st.divider()
 
 # Generate button
 if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
@@ -135,8 +192,9 @@ with st.expander("📖 Instructions"):
     1. Sélectionne le template
     2. Rentre le numéro de lot (ex: 2026-10)
     3. Ajuste la taille du texte si besoin
-    4. Clique "Générer PDF"
-    5. Télécharge et imprime sur tes étiquettes
+    4. Regarde l'aperçu pour vérifier que ça fit
+    5. Clique "Générer PDF" quand c'est bon
+    6. Télécharge et imprime sur tes étiquettes
     
     **Spécifications disponibles:**
     - Étiquettes de lot rondes: 11 col × 14 rangées (½" rond)
