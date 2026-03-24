@@ -106,7 +106,7 @@ with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=1)
 
 if template["multiline"] and lot_number and len(lot_number.strip()) > 20:
-    st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Le slider indique la taille maximale souhaitée.")
+    st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Tu n'as pas à modifier la taille de la police.")
 
 # Generate button
 if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
