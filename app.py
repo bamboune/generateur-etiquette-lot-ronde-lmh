@@ -25,7 +25,16 @@ st.set_page_config(
     page_icon="🏷️",
     layout="centered"
 )
-st.title("🏷️ Générateur d'étiquettes")
+
+# Logo
+_LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+if os.path.exists(_LOGO_PATH):
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(_LOGO_PATH, use_container_width=True)
+    st.title("Générateur d'étiquettes")
+else:
+    st.title("🏷️ Générateur d'étiquettes")
 
 # Templates definition
 templates = {
