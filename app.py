@@ -1,8 +1,24 @@
 import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfbase.pdfmetrics import stringWidth, registerFont
+from reportlab.pdfbase.ttfonts import TTFont
+import os
 import io
+
+# Enregistrement de la police Lato si disponible, sinon fallback Helvetica
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+_LATO_REGULAR = os.path.join(_FONT_DIR, "Lato-Regular.ttf")
+_LATO_BOLD = os.path.join(_FONT_DIR, "Lato-Bold.ttf")
+
+if os.path.exists(_LATO_REGULAR) and os.path.exists(_LATO_BOLD):
+    registerFont(TTFont("Lato", _LATO_REGULAR))
+    registerFont(TTFont("Lato-Bold", _LATO_BOLD))
+    FONT_NORMAL = "Lato"
+    FONT_BOLD = "Lato-Bold"
+else:
+    FONT_NORMAL = "Helvetica"
+    FONT_BOLD = "Helvetica-Bold"
 
 st.set_page_config(
     page_title="Etiquettes LMH",
@@ -38,8 +54,8 @@ templates = {
         "total": 154,
         "description": "7 colonnes × 22 rangées = 154 étiquettes",
         "multiline": True,
-        "label_width_mm": 25.4,   # 1 inch
-        "label_height_mm": 9.525, # 0.375 inch
+        "label_width_mm": 25.4,
+        "label_height_mm": 9.525,
         "margin_h_mm": 1.2,
         "margin_v_mm": 0.8,
     },
@@ -47,17 +63,12 @@ templates = {
 
 
 def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_start, min_font_size=4):
-    """
-    Wraps text word-by-word using actual rendered widths (stringWidth).
-    Reduces font size until the text block fits within the label.
-    Returns (lines, font_size, line_height_pts).
-    """
     max_width_pts = max_width_mm * mm
     max_height_pts = max_height_mm * mm
     words = text.split()
 
     for fs in range(font_size_start, min_font_size - 1, -1):
-        line_height = fs * 1.15  # tight but readable line spacing
+        line_height = fs * 1.15
 
         lines = []
         current_line = []
@@ -69,7 +80,6 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
             else:
                 if current_line:
                     lines.append(' '.join(current_line))
-                # If a single word is wider than the label, force it on its own line
                 current_line = [word]
 
         if current_line:
@@ -79,7 +89,6 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
         if total_height <= max_height_pts:
             return lines, fs, line_height
 
-    # Fallback: return whatever we have at min font size
     return lines, min_font_size, min_font_size * 1.15
 
 
@@ -103,10 +112,10 @@ col1, col2 = st.columns(2)
 with col1:
     font_size = st.slider("Taille du texte", 4, 10, 6)
 with col2:
-    font_weight = st.selectbox("Poids", ["normal", "bold"], index=1)
+    font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
 
 if template["multiline"] and lot_number and len(lot_number.strip()) > 20:
-    st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Tu n'as pas à modifier la taille de la police.")
+    st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Le slider indique la taille maximale souhaitée.")
 
 # Generate button
 if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
@@ -125,10 +134,9 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         pdf_buffer = io.BytesIO()
         c = canvas.Canvas(pdf_buffer, pagesize=(page_width*mm, page_height*mm))
 
-        font_name = "Helvetica-Bold" if font_weight == "bold" else "Helvetica"
+        font_name = FONT_BOLD if font_weight == "bold" else FONT_NORMAL
 
         if template["multiline"]:
-            # Rectangle label: fit text with auto line-wrap and auto font-size
             max_w = template["label_width_mm"] - 2 * template["margin_h_mm"]
             max_h = template["label_height_mm"] - 2 * template["margin_v_mm"]
 
@@ -138,8 +146,6 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
             c.setFont(font_name, actual_fs)
 
             n = len(lines)
-            # Vertical center: offset first baseline up by half the total block height
-            # line_height covers one line; block = n lines
             v_offset = ((n - 1) * line_height) / 2
 
             for row in range(rows):
@@ -150,7 +156,6 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                     for i, line in enumerate(lines):
                         c.drawCentredString(x, y + v_offset - i * line_height, line)
         else:
-            # Round label: single line, unchanged behaviour
             c.setFont(font_name, font_size)
             for row in range(rows):
                 for col in range(cols):
