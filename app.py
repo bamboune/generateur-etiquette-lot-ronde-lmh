@@ -89,8 +89,8 @@ templates = {
         "multiline": True,
         "label_width_mm": 44.45,
         "label_height_mm": 12.7,
-        "margin_h_mm": 2.5,
-        "margin_v_mm": 0.8,
+        "margin_h_mm": 1.5,
+        "margin_v_mm": 0.3,
     },
 }
 
@@ -101,7 +101,7 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
     words = text.split()
 
     for fs in range(font_size_start, min_font_size - 1, -1):
-        line_height = fs * 1.0
+        line_height = fs * 0.9
 
         lines = []
         current_line = []
@@ -122,7 +122,7 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
         if total_height <= max_height_pts:
             return lines, fs, line_height
 
-    return lines, min_font_size, min_font_size * 1.0
+    return lines, min_font_size, min_font_size * 0.9
 
 
 # Template selection
@@ -142,7 +142,7 @@ lot_number = st.text_input(
 # Settings
 col1, col2 = st.columns(2)
 with col1:
-    font_size = st.slider("Taille du texte", 3, 10, 7)
+    font_size = st.slider("Taille du texte", 3, 10, 8)
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
 
