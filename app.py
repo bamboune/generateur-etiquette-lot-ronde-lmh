@@ -193,15 +193,15 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                         is_last = (i == len(lines) - 1)
 
                         if is_last or len(words_in_line) <= 1:
-                            c.setWordSpace(0)
                             c.drawCentredString(x, y_pos, line)
                         else:
-                            line_w = stringWidth(line, font_name, actual_fs)
-                            n_gaps = len(words_in_line) - 1
-                            c.setWordSpace((max_w_pts - line_w) / n_gaps)
-                            c.drawString(left_x, y_pos, line)
-
-            c.setWordSpace(0)
+                            word_widths = [stringWidth(w, font_name, actual_fs) for w in words_in_line]
+                            total_word_w = sum(word_widths)
+                            gap = (max_w_pts - total_word_w) / (len(words_in_line) - 1)
+                            cur_x = left_x
+                            for j, word in enumerate(words_in_line):
+                                c.drawString(cur_x, y_pos, word)
+                                cur_x += word_widths[j] + gap
         else:
             c.setFont(font_name, font_size)
             for row in range(rows):
