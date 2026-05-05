@@ -113,7 +113,6 @@ st.subheader(f"{template['description']}")
 lot_number = st.text_input(
     "Numéro de lot",
     placeholder="ex: 2026-10",
-    max_chars=200
 )
 
 # Settings
