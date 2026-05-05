@@ -82,8 +82,8 @@ templates = {
         "multiline": True,
         "label_width_mm": 44.45,
         "label_height_mm": 12.7,
-        "margin_h_mm": 1.5,
-        "margin_v_mm": 0.5,
+        "margin_h_mm": 2.5,
+        "margin_v_mm": 1.5,
     },
 }
 
