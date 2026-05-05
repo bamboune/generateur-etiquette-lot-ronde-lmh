@@ -89,8 +89,8 @@ templates = {
         "multiline": True,
         "label_width_mm": 44.45,
         "label_height_mm": 12.7,
-        "margin_h_mm": 2.0,
-        "margin_v_mm": 0.1,
+        "margin_h_mm": 2.5,
+        "margin_v_mm": 0.8,
     },
 }
 
@@ -101,7 +101,7 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
     words = text.split()
 
     for fs in range(font_size_start, min_font_size - 1, -1):
-        line_height = fs * 1.1
+        line_height = fs * 1.0
 
         lines = []
         current_line = []
@@ -122,7 +122,7 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
         if total_height <= max_height_pts:
             return lines, fs, line_height
 
-    return lines, min_font_size, min_font_size * 1.1
+    return lines, min_font_size, min_font_size * 1.0
 
 
 # Template selection
@@ -179,13 +179,7 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
             c.setFont(font_name, actual_fs)
 
             n = len(lines)
-            max_h_pts = max_h * mm
-            if n > 1:
-                distributed_lh = max_h_pts / (n - 1) if n > 1 else line_height
-                distributed_lh = min(distributed_lh, line_height * 2.0)
-            else:
-                distributed_lh = line_height
-            v_offset = ((n - 1) * distributed_lh) / 2
+            v_offset = ((n - 1) * line_height) / 2
 
             for row in range(rows):
                 for col in range(cols):
@@ -194,7 +188,7 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                     left_x = x - max_w_pts / 2
 
                     for i, line in enumerate(lines):
-                        y_pos = y + v_offset - i * distributed_lh
+                        y_pos = y + v_offset - i * line_height
                         words_in_line = line.split()
                         is_last = (i == len(lines) - 1)
 
