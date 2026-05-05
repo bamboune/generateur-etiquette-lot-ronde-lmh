@@ -8,10 +8,17 @@ import io
 
 # Enregistrement de la police Lato si disponible, sinon fallback Helvetica
 _FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+_NUNITO_REGULAR = os.path.join(_FONT_DIR, "Nunito-Regular.ttf")
+_NUNITO_BOLD = os.path.join(_FONT_DIR, "Nunito-Bold.ttf")
 _LATO_REGULAR = os.path.join(_FONT_DIR, "Lato-Regular.ttf")
 _LATO_BOLD = os.path.join(_FONT_DIR, "Lato-Bold.ttf")
 
-if os.path.exists(_LATO_REGULAR) and os.path.exists(_LATO_BOLD):
+if os.path.exists(_NUNITO_REGULAR) and os.path.exists(_NUNITO_BOLD):
+    registerFont(TTFont("Nunito", _NUNITO_REGULAR))
+    registerFont(TTFont("Nunito-Bold", _NUNITO_BOLD))
+    FONT_NORMAL = "Nunito"
+    FONT_BOLD = "Nunito-Bold"
+elif os.path.exists(_LATO_REGULAR) and os.path.exists(_LATO_BOLD):
     registerFont(TTFont("Lato", _LATO_REGULAR))
     registerFont(TTFont("Lato-Bold", _LATO_BOLD))
     FONT_NORMAL = "Lato"
@@ -83,7 +90,7 @@ templates = {
         "label_width_mm": 44.45,
         "label_height_mm": 12.7,
         "margin_h_mm": 2.0,
-        "margin_v_mm": 0.3,
+        "margin_v_mm": 0.1,
     },
 }
 
@@ -135,7 +142,7 @@ lot_number = st.text_input(
 # Settings
 col1, col2 = st.columns(2)
 with col1:
-    font_size = st.slider("Taille du texte", 3, 10, 6)
+    font_size = st.slider("Taille du texte", 3, 10, 7)
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
 
@@ -164,6 +171,7 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         if template["multiline"]:
             max_w = template["label_width_mm"] - 2 * template["margin_h_mm"]
             max_h = template["label_height_mm"] - 2 * template["margin_v_mm"]
+            max_w_pts = max_w * mm
 
             lines, actual_fs, line_height = fit_text_to_label(
                 lot_number, font_name, max_w, max_h, font_size
@@ -177,9 +185,23 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                 for col in range(cols):
                     x = (groupX + col * spacingH) * mm
                     y = (page_height - (groupY + row * spacingV)) * mm
+                    left_x = x - max_w_pts / 2
 
                     for i, line in enumerate(lines):
-                        c.drawCentredString(x, y + v_offset - i * line_height, line)
+                        y_pos = y + v_offset - i * line_height
+                        words_in_line = line.split()
+                        is_last = (i == len(lines) - 1)
+
+                        if is_last or len(words_in_line) <= 1:
+                            c.setWordSpace(0)
+                            c.drawCentredString(x, y_pos, line)
+                        else:
+                            line_w = stringWidth(line, font_name, actual_fs)
+                            n_gaps = len(words_in_line) - 1
+                            c.setWordSpace((max_w_pts - line_w) / n_gaps)
+                            c.drawString(left_x, y_pos, line)
+
+            c.setWordSpace(0)
         else:
             c.setFont(font_name, font_size)
             for row in range(rows):
