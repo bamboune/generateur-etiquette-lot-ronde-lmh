@@ -111,7 +111,7 @@ st.subheader(f"{template['description']}")
 
 # Input
 lot_number = st.text_input(
-    "Numéro de lot",
+    "Écris ton numéro de lot ou erratum (ou autre):",
     placeholder="ex: 2026-10",
 )
 
