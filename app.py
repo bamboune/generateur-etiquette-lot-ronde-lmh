@@ -69,8 +69,8 @@ templates = {
         "margin_v_mm": 0.8,
     },
     "Étiquette rectangle Avery 5167 (1.75\" × 0.5\")": {
-        "groupX": 8.3,
-        "groupY": 13.1,
+        "groupX": 30.525,
+        "groupY": 19.45,
         "spacingH": 52.2,
         "spacingV": 12.7,
         "cols": 4,
@@ -88,7 +88,7 @@ templates = {
 }
 
 
-def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_start, min_font_size=4):
+def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_start, min_font_size=3):
     max_width_pts = max_width_mm * mm
     max_height_pts = max_height_mm * mm
     words = text.split()
@@ -135,7 +135,7 @@ lot_number = st.text_input(
 # Settings
 col1, col2 = st.columns(2)
 with col1:
-    font_size = st.slider("Taille du texte", 4, 10, 6)
+    font_size = st.slider("Taille du texte", 3, 10, 6)
 with col2:
     font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
 
