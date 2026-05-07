@@ -90,7 +90,7 @@ templates = {
         "label_width_mm": 48.8,
         "label_height_mm": 24.1,
         "margin_h_mm": 2.0,
-        "margin_v_mm": 1.5,
+        "margin_v_mm": 0.5,
     },
     "Étiquette rectangle Avery 5167 (1.75\" × 0.5\")": {
         "groupX": 29.025,
