@@ -94,7 +94,7 @@ templates = {
     },
     "Étiquette rectangle Avery 5167 (1.75\" × 0.5\")": {
         "groupX": 29.025,
-        "groupY": 19.7,
+        "groupY": 19.05,
         "spacingH": 52.2,
         "spacingV": 12.7,
         "cols": 4,
