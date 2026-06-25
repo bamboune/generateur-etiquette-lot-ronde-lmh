@@ -109,11 +109,21 @@ templates = {
         "margin_h_mm": 1.5,
         "margin_v_mm": 0.1,
     },
-    "Étiquette produit LMH (4\" × 6\")": {
+    "Étiquettes externalisation (4 x 6)": {
         "type": "product_label",
         "page_width": 102,
         "page_height": 152,
+        "label_count": 2,
+        "label_title": "LES MAUVAISES HERBES",
         "description": "2 étiquettes identiques de 102 × 76 mm par feuille",
+    },
+    "Étiquette externalisation - en attente (4 x 3)": {
+        "type": "product_label",
+        "page_width": 102,
+        "page_height": 76,
+        "label_count": 1,
+        "label_title": "Étiquettes externalisation - en attente (4 x 3)",
+        "description": "1 étiquette de 102 × 76 mm",
     },
 }
 
@@ -148,7 +158,7 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
     return lines, min_font_size, min_font_size * 0.9
 
 
-def draw_product_label(c, x_left_mm, y_bottom_mm, width_mm, height_mm, fields, font_bold, font_normal):
+def draw_product_label(c, x_left_mm, y_bottom_mm, width_mm, height_mm, fields, font_bold, font_normal, title="LES MAUVAISES HERBES"):
     """Draw one product label. fields = list of (label_str, value_str)."""
     margin_h = 6 * mm
     margin_top = 9 * mm
@@ -163,7 +173,7 @@ def draw_product_label(c, x_left_mm, y_bottom_mm, width_mm, height_mm, fields, f
     title_fs = 9
     c.setFont(font_bold, title_fs)
     title_y = y_bottom + h - margin_top
-    c.drawCentredString(x_left + w / 2, title_y, "LES MAUVAISES HERBES")
+    c.drawCentredString(x_left + w / 2, title_y, title)
 
     # Distribute 6 fields evenly in remaining space
     field_fs = 7.5
@@ -231,7 +241,9 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
         else:
             page_width = template["page_width"]
             page_height = template["page_height"]
-            label_h = page_height / 2  # 76mm
+            label_count = template.get("label_count", 2)
+            label_title = template.get("label_title", "LES MAUVAISES HERBES")
+            label_h = page_height / label_count
 
             pdf_buffer = io.BytesIO()
             c = canvas.Canvas(pdf_buffer, pagesize=(page_width * mm, page_height * mm))
@@ -245,16 +257,18 @@ if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
                 ("Poids", poids),
             ]
 
-            # Draw two identical labels (top half, then bottom half)
-            draw_product_label(c, 0, label_h, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL)
-            draw_product_label(c, 0, 0, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL)
-
-            # Dashed cut guide line at center
-            c.setStrokeColorRGB(0.75, 0.75, 0.75)
-            c.setLineWidth(0.3)
-            c.setDash([2, 3])
-            c.line(0, label_h * mm, page_width * mm, label_h * mm)
-            c.setDash([])
+            if label_count == 2:
+                # Draw two identical labels (top half, then bottom half)
+                draw_product_label(c, 0, label_h, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL, label_title)
+                draw_product_label(c, 0, 0, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL, label_title)
+                # Dashed cut guide line at center
+                c.setStrokeColorRGB(0.75, 0.75, 0.75)
+                c.setLineWidth(0.3)
+                c.setDash([2, 3])
+                c.line(0, label_h * mm, page_width * mm, label_h * mm)
+                c.setDash([])
+            else:
+                draw_product_label(c, 0, 0, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL, label_title)
 
             c.save()
             pdf_buffer.seek(0)
