@@ -109,6 +109,12 @@ templates = {
         "margin_h_mm": 1.5,
         "margin_v_mm": 0.1,
     },
+    "Étiquette produit LMH (4\" × 6\")": {
+        "type": "product_label",
+        "page_width": 102,
+        "page_height": 152,
+        "description": "2 étiquettes identiques de 102 × 76 mm par feuille",
+    },
 }
 
 
@@ -142,6 +148,41 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
     return lines, min_font_size, min_font_size * 0.9
 
 
+def draw_product_label(c, x_left_mm, y_bottom_mm, width_mm, height_mm, fields, font_bold, font_normal):
+    """Draw one product label. fields = list of (label_str, value_str)."""
+    margin_h = 6 * mm
+    margin_top = 9 * mm
+    margin_bottom = 5 * mm
+
+    w = width_mm * mm
+    h = height_mm * mm
+    x_left = x_left_mm * mm
+    y_bottom = y_bottom_mm * mm
+
+    # Title "LES MAUVAISES HERBES"
+    title_fs = 9
+    c.setFont(font_bold, title_fs)
+    title_y = y_bottom + h - margin_top
+    c.drawCentredString(x_left + w / 2, title_y, "LES MAUVAISES HERBES")
+
+    # Distribute 6 fields evenly in remaining space
+    field_fs = 7.5
+    field_area_top = title_y - title_fs * 1.3
+    field_area_bottom = y_bottom + margin_bottom
+    available_h = field_area_top - field_area_bottom
+    n_fields = len(fields)
+    line_h = available_h / n_fields if n_fields else 8 * mm
+
+    for i, (label_str, value_str) in enumerate(fields):
+        y = field_area_top - (i + 0.75) * line_h
+        c.setFont(font_bold, field_fs)
+        label_text = f"{label_str}: "
+        label_w = stringWidth(label_text, font_bold, field_fs)
+        c.drawString(x_left + margin_h, y, label_text)
+        c.setFont(font_normal, field_fs)
+        c.drawString(x_left + margin_h + label_w, y, value_str)
+
+
 # Template selection
 template_choice = st.selectbox(
     "Quel template?",
@@ -150,96 +191,158 @@ template_choice = st.selectbox(
 template = templates[template_choice]
 st.subheader(f"{template['description']}")
 
-# Input
-lot_number = st.text_input(
-    "Écris ton numéro de lot ou erratum (ou autre):",
-    placeholder="ex: 2026-10",
-)
+template_type = template.get("type", "standard")
 
-# Settings
-col1, col2 = st.columns(2)
-with col1:
-    font_size = st.slider("Taille du texte", 3, 10, 8)
-with col2:
-    font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
+# Input fields — conditional on template type
+if template_type == "product_label":
+    nom = st.text_input("Nom du produit", placeholder="ex: Carottes")
+    bio = st.selectbox("Bio / Non-bio", ["BIO", "Non-bio"])
+    col1, col2 = st.columns(2)
+    with col1:
+        date_exp = st.text_input("Date d'expiration", placeholder="ex: 2026-12-31")
+        no_lot = st.text_input("N° de lot", placeholder="ex: 2026-10")
+    with col2:
+        provenance = st.text_input("Provenance", placeholder="ex: Québec")
+        poids = st.text_input("Poids", placeholder="ex: 500g")
+    lot_number = None
+    font_size = 8
+    font_weight = "normal"
+else:
+    lot_number = st.text_input(
+        "Écris ton numéro de lot ou erratum (ou autre):",
+        placeholder="ex: 2026-10",
+    )
 
-if template["multiline"] and lot_number and len(lot_number.strip()) > 20:
-    st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Le slider indique la taille maximale souhaitée.")
+    col1, col2 = st.columns(2)
+    with col1:
+        font_size = st.slider("Taille du texte", 3, 10, 8)
+    with col2:
+        font_weight = st.selectbox("Poids", ["normal", "bold"], index=0)
+
+    if template["multiline"] and lot_number and len(lot_number.strip()) > 20:
+        st.info("Pour les textes longs, la taille de police s'ajuste automatiquement pour que tout rentre sur l'étiquette. Le slider indique la taille maximale souhaitée.")
 
 # Generate button
 if st.button("📥 Générer PDF", use_container_width=True, type="primary"):
-    if not lot_number.strip():
-        st.error("Rentre un numéro de lot!")
-    else:
-        groupX = template["groupX"]
-        groupY = template["groupY"]
-        spacingH = template["spacingH"]
-        spacingV = template["spacingV"]
-        cols = template["cols"]
-        rows = template["rows"]
-        page_width = template["page_width"]
-        page_height = template["page_height"]
 
-        pdf_buffer = io.BytesIO()
-        c = canvas.Canvas(pdf_buffer, pagesize=(page_width*mm, page_height*mm))
-
-        font_name = FONT_BOLD if font_weight == "bold" else FONT_NORMAL
-
-        if template["multiline"]:
-            max_w = template["label_width_mm"] - 2 * template["margin_h_mm"]
-            max_h = template["label_height_mm"] - 2 * template["margin_v_mm"]
-            max_w_pts = max_w * mm
-
-            lines, actual_fs, line_height = fit_text_to_label(
-                lot_number, font_name, max_w, max_h, font_size
-            )
-            c.setFont(font_name, actual_fs)
-
-            n = len(lines)
-            v_offset = ((n - 1) * line_height) / 2
-
-            for row in range(rows):
-                for col in range(cols):
-                    x = (groupX + col * spacingH) * mm
-                    y = (page_height - (groupY + row * spacingV)) * mm
-                    left_x = x - max_w_pts / 2
-
-                    for i, line in enumerate(lines):
-                        y_pos = y + v_offset - i * line_height
-                        words_in_line = line.split()
-                        is_last = (i == len(lines) - 1)
-
-                        if is_last or len(words_in_line) <= 1:
-                            c.drawCentredString(x, y_pos, line)
-                        else:
-                            word_widths = [stringWidth(w, font_name, actual_fs) for w in words_in_line]
-                            total_word_w = sum(word_widths)
-                            gap = (max_w_pts - total_word_w) / (len(words_in_line) - 1)
-                            cur_x = left_x
-                            for j, word in enumerate(words_in_line):
-                                c.drawString(cur_x, y_pos, word)
-                                cur_x += word_widths[j] + gap
+    if template_type == "product_label":
+        if not nom.strip():
+            st.error("Rentre le nom du produit!")
         else:
-            c.setFont(font_name, font_size)
-            for row in range(rows):
-                for col in range(cols):
-                    x = groupX + (col * spacingH)
-                    y = page_height - (groupY + (row * spacingV))
-                    c.drawCentredString(x*mm, y*mm, lot_number)
+            page_width = template["page_width"]
+            page_height = template["page_height"]
+            label_h = page_height / 2  # 76mm
 
-        c.save()
-        pdf_buffer.seek(0)
+            pdf_buffer = io.BytesIO()
+            c = canvas.Canvas(pdf_buffer, pagesize=(page_width * mm, page_height * mm))
 
-        st.download_button(
-            label="⬇️ Télécharger le PDF",
-            data=pdf_buffer,
-            file_name=f"{lot_number[:40]}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
+            fields = [
+                ("Nom", nom),
+                ("Bio/Non-bio", bio),
+                ("Date d'exp", date_exp),
+                ("N° de lot", no_lot),
+                ("Provenance", provenance),
+                ("Poids", poids),
+            ]
 
-        st.success(f"✅ PDF généré: {lot_number[:40]}.pdf")
-        st.info(f"Prêt à imprimer sur {template_choice}")
+            # Draw two identical labels (top half, then bottom half)
+            draw_product_label(c, 0, label_h, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL)
+            draw_product_label(c, 0, 0, page_width, label_h, fields, FONT_BOLD, FONT_NORMAL)
+
+            # Dashed cut guide line at center
+            c.setStrokeColorRGB(0.75, 0.75, 0.75)
+            c.setLineWidth(0.3)
+            c.setDash([2, 3])
+            c.line(0, label_h * mm, page_width * mm, label_h * mm)
+            c.setDash([])
+
+            c.save()
+            pdf_buffer.seek(0)
+
+            safe_name = (nom[:40].strip().replace(" ", "_") or "etiquette")
+            st.download_button(
+                label="⬇️ Télécharger le PDF",
+                data=pdf_buffer,
+                file_name=f"{safe_name}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            st.success(f"✅ PDF généré: {safe_name}.pdf")
+            st.info(f"Prêt à imprimer sur {template_choice}")
+
+    else:
+        if not lot_number.strip():
+            st.error("Rentre un numéro de lot!")
+        else:
+            groupX = template["groupX"]
+            groupY = template["groupY"]
+            spacingH = template["spacingH"]
+            spacingV = template["spacingV"]
+            cols = template["cols"]
+            rows = template["rows"]
+            page_width = template["page_width"]
+            page_height = template["page_height"]
+
+            pdf_buffer = io.BytesIO()
+            c = canvas.Canvas(pdf_buffer, pagesize=(page_width*mm, page_height*mm))
+
+            font_name = FONT_BOLD if font_weight == "bold" else FONT_NORMAL
+
+            if template["multiline"]:
+                max_w = template["label_width_mm"] - 2 * template["margin_h_mm"]
+                max_h = template["label_height_mm"] - 2 * template["margin_v_mm"]
+                max_w_pts = max_w * mm
+
+                lines, actual_fs, line_height = fit_text_to_label(
+                    lot_number, font_name, max_w, max_h, font_size
+                )
+                c.setFont(font_name, actual_fs)
+
+                n = len(lines)
+                v_offset = ((n - 1) * line_height) / 2
+
+                for row in range(rows):
+                    for col in range(cols):
+                        x = (groupX + col * spacingH) * mm
+                        y = (page_height - (groupY + row * spacingV)) * mm
+                        left_x = x - max_w_pts / 2
+
+                        for i, line in enumerate(lines):
+                            y_pos = y + v_offset - i * line_height
+                            words_in_line = line.split()
+                            is_last = (i == len(lines) - 1)
+
+                            if is_last or len(words_in_line) <= 1:
+                                c.drawCentredString(x, y_pos, line)
+                            else:
+                                word_widths = [stringWidth(w, font_name, actual_fs) for w in words_in_line]
+                                total_word_w = sum(word_widths)
+                                gap = (max_w_pts - total_word_w) / (len(words_in_line) - 1)
+                                cur_x = left_x
+                                for j, word in enumerate(words_in_line):
+                                    c.drawString(cur_x, y_pos, word)
+                                    cur_x += word_widths[j] + gap
+            else:
+                c.setFont(font_name, font_size)
+                for row in range(rows):
+                    for col in range(cols):
+                        x = groupX + (col * spacingH)
+                        y = page_height - (groupY + (row * spacingV))
+                        c.drawCentredString(x*mm, y*mm, lot_number)
+
+            c.save()
+            pdf_buffer.seek(0)
+
+            st.download_button(
+                label="⬇️ Télécharger le PDF",
+                data=pdf_buffer,
+                file_name=f"{lot_number[:40]}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+
+            st.success(f"✅ PDF généré: {lot_number[:40]}.pdf")
+            st.info(f"Prêt à imprimer sur {template_choice}")
 
 # Instructions
 with st.expander("📖 Instructions"):
