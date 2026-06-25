@@ -122,7 +122,7 @@ templates = {
         "page_width": 102,
         "page_height": 76,
         "label_count": 1,
-        "label_title": "Étiquettes externalisation - en attente (4 x 3)",
+        "label_title": "LES MAUVAISES HERBES",
         "description": "1 étiquette de 102 × 76 mm",
     },
 }
@@ -159,38 +159,60 @@ def fit_text_to_label(text, font_name, max_width_mm, max_height_mm, font_size_st
 
 
 def draw_product_label(c, x_left_mm, y_bottom_mm, width_mm, height_mm, fields, font_bold, font_normal, title="LES MAUVAISES HERBES"):
-    """Draw one product label. fields = list of (label_str, value_str)."""
-    margin_h = 6 * mm
-    margin_top = 9 * mm
-    margin_bottom = 5 * mm
+    """Draw one product label in 2-column layout. fields = list of (label_str, value_str)."""
+    margin_h = 5 * mm
+    margin_top = 10 * mm
+    margin_bottom = 4 * mm
 
     w = width_mm * mm
     h = height_mm * mm
     x_left = x_left_mm * mm
     y_bottom = y_bottom_mm * mm
+    cx = x_left + w / 2
 
-    # Title "LES MAUVAISES HERBES"
-    title_fs = 9
+    # Title
+    title_fs = 13
     c.setFont(font_bold, title_fs)
     title_y = y_bottom + h - margin_top
-    c.drawCentredString(x_left + w / 2, title_y, title)
+    c.drawCentredString(cx, title_y, title)
 
-    # Distribute 6 fields evenly in remaining space
-    field_fs = 7.5
-    field_area_top = title_y - title_fs * 1.3
+    # Divider under title
+    c.setStrokeColorRGB(0.6, 0.6, 0.6)
+    c.setLineWidth(0.4)
+    c.line(x_left + margin_h, title_y - 3*mm, x_left + w - margin_h, title_y - 3*mm)
+    c.setStrokeColorRGB(0, 0, 0)
+
+    # 2-column fields
+    field_fs = 9
+    left_x = x_left + margin_h
+    right_x = cx + 2 * mm
+
+    field_area_top = title_y - 6 * mm
     field_area_bottom = y_bottom + margin_bottom
     available_h = field_area_top - field_area_bottom
-    n_fields = len(fields)
-    line_h = available_h / n_fields if n_fields else 8 * mm
+    n_rows = (len(fields) + 1) // 2
+    line_h = available_h / n_rows if n_rows else 8 * mm
 
-    for i, (label_str, value_str) in enumerate(fields):
-        y = field_area_top - (i + 0.75) * line_h
+    left_fields = fields[0::2]
+    right_fields = fields[1::2]
+
+    for i, (label_str, value_str) in enumerate(left_fields):
+        y = field_area_top - (i + 0.7) * line_h
         c.setFont(font_bold, field_fs)
-        label_text = f"{label_str}: "
+        label_text = f"{label_str}:"
         label_w = stringWidth(label_text, font_bold, field_fs)
-        c.drawString(x_left + margin_h, y, label_text)
+        c.drawString(left_x, y, label_text)
         c.setFont(font_normal, field_fs)
-        c.drawString(x_left + margin_h + label_w, y, value_str)
+        c.drawString(left_x + label_w + 1.5*mm, y, value_str)
+
+    for i, (label_str, value_str) in enumerate(right_fields):
+        y = field_area_top - (i + 0.7) * line_h
+        c.setFont(font_bold, field_fs)
+        label_text = f"{label_str}:"
+        label_w = stringWidth(label_text, font_bold, field_fs)
+        c.drawString(right_x, y, label_text)
+        c.setFont(font_normal, field_fs)
+        c.drawString(right_x + label_w + 1.5*mm, y, value_str)
 
 
 # Template selection
